@@ -63,6 +63,8 @@ runs:
         echo "------------------------------"
         echo "------------------------------"
         echo "Delete Prerelease"
+        which gh
+        gh release list
         prerelease="$(gh release list | grep -i pre-release | cut -f1)"
         echo $prerelease
         if [[ -n "${prerelease}" ]]; then
