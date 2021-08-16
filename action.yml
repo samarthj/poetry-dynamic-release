@@ -94,7 +94,7 @@ runs:
         git config --global user.signkey ${{ inputs.git-gpg-email }}
         git config --global commit.gpgsign true
         git config --global init.defaultBranch main
-        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
 
     - name: Delete Prerelease
       shell: bash
