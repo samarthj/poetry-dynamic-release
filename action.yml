@@ -28,6 +28,7 @@ runs:
         architecture: 'x64'
     - name: Get pip cache dir
       id: pip-cache-dir
+      shell: bash
       run: |
         echo "::set-output name=dir::$(pip cache dir)"
     - name: Load pip cache
@@ -39,11 +40,13 @@ runs:
         restore-keys: |
           ${{ runner.os }}-pip-poetry-poe-semver
     - name: Install system dependencies
+      shell: bash
       run: |
         python -m pip install --upgrade pip
         pip install poetry poethepoet poetry-dynamic-versioning
     - name: Get poetry cache dir
       id: poetry-cache-dir
+      shell: bash
       run: |
         echo "::set-output name=dir::$(poetry config cache-dir)"
     - name: Load poetry cache
@@ -58,20 +61,26 @@ runs:
           ${{ runner.os }}-poetry-
     - name: Update the dependencies using poetry
       if: ${{ inputs.poetry-update == true }}
+      shell: bash
       run: |
         poetry update
     - name: Install the project
+      shell: bash
       run: |
         poetry install --remove-untracked
         poetry config --list
 
     - name: Format with isort
+      shell: bash
       run: poe format-imports
     - name: Format with black
+      shell: bash
       run: poe format
     - name: Test with pytest
+      shell: bash
       run: poe test
     - name: Lint with flake8
+      shell: bash
       run: |
         # Show the plugins used for linting
         poe lint-plugins
@@ -102,6 +111,7 @@ runs:
     - name: Delete Prerelease
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      shell: bash
       run: |
         prerelease="$(gh release list | grep -i pre-release | cut -f1)"
         echo $prerelease
@@ -120,6 +130,7 @@ runs:
       id: version
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      shell: bash
       run: |
         prev_release="$(gh release list | grep -i latest | cut -f1)"
         poetry-dynamic-versioning
@@ -149,12 +160,14 @@ runs:
       continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
       run: |
         [[ "${{ steps.version.outputs.version_stage }}" == "rc" ]] && [[ ${{ steps.version.outputs.version_revision }} -gt 3 ]]
 
     - name: Set Release Version ${{ steps.version.outputs.version_full }} -> ${{ steps.version.outputs.next_release }}
       id: set_release
       if: ${{ steps.release.outcome == 'success' }}
+      shell: bash
       run: |
         poetry version ${{ steps.version.outputs.next_release }}
     - name: Set Prerelease Version ${{ steps.version.outputs.version_full }} -> ${{ steps.version.outputs.next_prerelease }}
@@ -170,6 +183,7 @@ runs:
       continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
       run: |
         git add .
         git status
@@ -181,6 +195,7 @@ runs:
       if: ${{ (steps.set_release.outcome == 'success') && (steps.commit.outcome == 'success') }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
       run: |
         prev_release="$(gh release list | grep -i latest | cut -f1)"
         echo $prev_release
@@ -197,6 +212,7 @@ runs:
       if: ${{ (steps.set_prerelease.outcome == 'success') && (steps.commit.outcome == 'success') }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
       run: |
         prev_release="$(gh release list | grep -i latest | cut -f1)"
         prev_prerelease="$(gh release list | grep -i pre-latest | cut -f1)"
