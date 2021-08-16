@@ -63,9 +63,8 @@ runs:
         echo "------------------------------"
         echo "------------------------------"
         echo "Delete Prerelease"
-        which gh
-        gh release list
-        prerelease="$(gh release list | grep -i pre-release | cut -f1)"
+        
+        prerelease="$(gh release list | grep -i pre-release || true | cut -f1)"
         echo $prerelease
         if [[ -n "${prerelease}" ]]; then
           echo "Current pre-release - $prerelease"
@@ -85,7 +84,7 @@ runs:
         echo "------------------------------"
         echo "------------------------------"
         echo "Version Evaluation"
-        prev_release="$(gh release list | grep -i latest | cut -f1)"
+        prev_release="$(gh release list | grep -i latest || true | cut -f1)"
         poetry-dynamic-versioning
         echo "dynamic: $(poetry version -s) release: $prev_release"
         version_base="$(poetry version -s | sed -re 's|^([0-9.]+)([abrc]*)([0-9]*)|\1|g')"
@@ -140,7 +139,7 @@ runs:
         
         if [[ "$release" == "yes" ]]; then
           echo "Release ${{ steps.version.outputs.next_release }}"
-          prev_release="$(gh release list | grep -i latest | cut -f1)"
+          prev_release="$(gh release list | grep -i latest || true | cut -f1)"
           echo $prev_release
           [[ "v${{ steps.version.outputs.next_release }}" == "${prev_release}" ]] && exit 0
           git tag "v${{ steps.version.outputs.next_release }}" -m "v${{ steps.version.outputs.next_release }}"
@@ -151,8 +150,8 @@ runs:
           gh release create "v${{ steps.version.outputs.next_release }}" -F NEW_RELEASE.md ./dist/*.tar.gz ./dist/*.whl
         elif [[ "$prerelease" == "yes" ]]; then
           echo "Prerelease ${{ steps.version.outputs.next_prerelease }}"
-          prev_release="$(gh release list | grep -i latest | cut -f1)"
-          prev_prerelease="$(gh release list | grep -i pre-latest | cut -f1)"
+          prev_release="$(gh release list | grep -i latest || true | cut -f1)"
+          prev_prerelease="$(gh release list | grep -i pre-release || true | cut -f1)"
           echo "$prev_release $prev_prerelease"
           [[ "v${{ steps.version.outputs.next_prerelease }}" == "${prev_release}" ]] && exit 0
           [[ "v${{ steps.version.outputs.next_prerelease }}" == "${prev_prerelease}" ]] && exit 0
