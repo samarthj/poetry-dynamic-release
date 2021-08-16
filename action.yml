@@ -86,17 +86,8 @@ runs:
         # exit-zero treats all errors as warnings.
         poe lint --count --exit-zero --statistics
 
-    - name: Import GPG key
-      uses: crazy-max/ghaction-import-gpg@v3
-      with:
-        gpg-private-key: ${{ secrets.PGP_PRIVATE_KEY }}
-        git-user-signingkey: true
-        git-commit-gpgsign: true
-
     - name: Setup git config
       shell: bash
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         git config --global user.name "${{ inputs.git-username }}"
         git config --global user.email ${{ inputs.git-email }}
@@ -106,8 +97,6 @@ runs:
         git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
 
     - name: Delete Prerelease
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       shell: bash
       run: |
         prerelease="$(gh release list | grep -i pre-release | cut -f1)"
@@ -125,8 +114,6 @@ runs:
 
     - name: Version Evaluation
       id: version
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       shell: bash
       run: |
         prev_release="$(gh release list | grep -i latest | cut -f1)"
@@ -154,9 +141,6 @@ runs:
 
     - name: Release Evaluation ${{ steps.version.outputs.next_release }}
       id: release
-      continue-on-error: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       shell: bash
       run: |
         release="no"
