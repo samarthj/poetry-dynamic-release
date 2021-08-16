@@ -48,7 +48,7 @@ runs:
         # Show the plugins used for linting
         poe lint-plugins
         # exit-zero treats all errors as warnings.
-        poe lint --count --exit-zero --statistics
+        poe lint --count --exit-zero --statistics || true
 
     - name: Setup git config
       shell: bash
