@@ -22,43 +22,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
-        architecture: 'x64'
-    - name: Get pip cache dir
-      id: pip-cache-dir
-      shell: bash
-      run: |
-        echo "::set-output name=dir::$(pip cache dir)"
-    - name: Load pip cache
-      id: pip-cache
-      uses: actions/cache@main
-      with:
-        path: ${{ steps.pip-cache-dir.outputs.dir }}
-        key: ${{ runner.os }}-pip-poetry-poe-semver
-        restore-keys: |
-          ${{ runner.os }}-pip-poetry-poe-semver
-    - name: Install system dependencies
-      shell: bash
-      run: |
-        python -m pip install --upgrade pip
-        pip install poetry poethepoet poetry-dynamic-versioning
-    - name: Get poetry cache dir
-      id: poetry-cache-dir
-      shell: bash
-      run: |
-        echo "::set-output name=dir::$(poetry config cache-dir)"
-    - name: Load poetry cache
-      id: poetry-cache
-      uses: actions/cache@main
-      with:
-        path: |
-          ${{ steps.poetry-cache-dir.outputs.dir }}
-          ./.venv
-        key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-poetry-
+
     - name: Update the dependencies using poetry
       shell: bash
       run: |
