@@ -60,10 +60,9 @@ runs:
         restore-keys: |
           ${{ runner.os }}-poetry-
     - name: Update the dependencies using poetry
-      if: ${{ inputs.poetry-update == true }}
       shell: bash
       run: |
-        poetry update
+        [ ${{ inputs.poetry-update }} == true ] && poetry update
     - name: Install the project
       shell: bash
       run: |
@@ -86,7 +85,6 @@ runs:
         poe lint-plugins
         # exit-zero treats all errors as warnings.
         poe lint --count --exit-zero --statistics
-      continue-on-error: true
 
     - name: Import GPG key
       uses: crazy-max/ghaction-import-gpg@v3
@@ -94,7 +92,6 @@ runs:
         gpg-private-key: ${{ secrets.PGP_PRIVATE_KEY }}
         git-user-signingkey: true
         git-commit-gpgsign: true
-        git-tag-gpgsign: true
 
     - name: Setup git config
       shell: bash
