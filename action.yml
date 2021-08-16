@@ -57,8 +57,11 @@ runs:
         restore-keys: |
           ${{ runner.os }}-poetry-
     - name: Update the dependencies using poetry
+      if: ${{ inputs.poetry-update == true }}
       run: |
         poetry update
+    - name: Install the project
+      run: |
         poetry install --remove-untracked
         poetry config --list
 
