@@ -159,66 +159,52 @@ runs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       shell: bash
       run: |
-        [[ "${{ steps.version.outputs.version_stage }}" == "rc" ]] && [[ ${{ steps.version.outputs.version_revision }} -gt 3 ]]
-
-    - name: Set Release Version ${{ steps.version.outputs.version_full }} -> ${{ steps.version.outputs.next_release }}
-      id: set_release
-      if: ${{ steps.release.outcome == 'success' }}
-      shell: bash
-      run: |
-        poetry version ${{ steps.version.outputs.next_release }}
-    - name: Set Prerelease Version ${{ steps.version.outputs.version_full }} -> ${{ steps.version.outputs.next_prerelease }}
-      id: set_prerelease
-      if: ${{ steps.release.outcome == 'failure' }}
-      shell: bash
-      run: |
-        poetry version ${{ steps.version.outputs.next_prerelease }}
-
-    - name: Commit ${{ steps.version.outputs.next_release }}
-      id: commit
-      if: ${{ (steps.set_release.outcome == 'success') || (steps.set_prerelease.outcome == 'success') }}
-      continue-on-error: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      shell: bash
-      run: |
+        release="no"
+        prerelease="no"
+        if [[ "${{ steps.version.outputs.version_stage }}" == "rc" ]] && [[ ${{ steps.version.outputs.version_revision }} -gt 3 ]]; then
+          release="yes"
+        else 
+          prerelease="yes"
+        fi
+        
+        if [[ "$release" == "yes" ]]; then
+          echo "Set Release Version ${{ steps.version.outputs.version_full }} -> ${{ steps.version.outputs.next_release }}"
+          poetry version ${{ steps.version.outputs.next_release }}
+        elif [[ "$prerelease" == "yes" ]]; then
+          echo "Set Prerelease Version ${{ steps.version.outputs.version_full }} -> ${{ steps.version.outputs.next_prerelease }}"
+          poetry version ${{ steps.version.outputs.next_prerelease }}
+        fi
+        
+        echo "Commit ${{ steps.version.outputs.next_release }}"
         git add .
         git status
         git commit -S -m "ci(github-actions): :construction_worker: v$(poetry version -s)"
         poetry run cz changelog --unreleased-version "v$(poetry version -s)"
+        
+        
+        if [[ "$release" == "yes" ]]; then
+          echo "Release ${{ steps.version.outputs.next_release }}"
+          prev_release="$(gh release list | grep -i latest | cut -f1)"
+          echo $prev_release
+          [[ "v${{ steps.version.outputs.next_release }}" == "${prev_release}" ]] && exit 0
+          git tag "v${{ steps.version.outputs.next_release }}" -m "v${{ steps.version.outputs.next_release }}"
+          git push --follow-tags
+          poetry build
+          echo "" > NEW_RELEASE.md
+          poetry run cz changelog --unreleased-version "v${{ steps.version.outputs.next_release }}" --start-rev "${prev_release}" --file-name NEW_RELEASE.md || true
+          gh release create "v${{ steps.version.outputs.next_release }}" -F NEW_RELEASE.md ./dist/*.tar.gz ./dist/*.whl
+        elif [[ "$prerelease" == "yes" ]]; then
+          echo "Prerelease ${{ steps.version.outputs.next_prerelease }}"
+          prev_release="$(gh release list | grep -i latest | cut -f1)"
+          prev_prerelease="$(gh release list | grep -i pre-latest | cut -f1)"
+          echo "$prev_release $prev_prerelease"
+          [[ "v${{ steps.version.outputs.next_prerelease }}" == "${prev_release}" ]] && exit 0
+          [[ "v${{ steps.version.outputs.next_prerelease }}" == "${prev_prerelease}" ]] && exit 0
+          git tag "v${{ steps.version.outputs.next_prerelease }}" -m "v${{ steps.version.outputs.next_prerelease }}"
+          git push --follow-tags
+          poetry build
+          echo "" > NEW_RELEASE.md
+          poetry run cz changelog --unreleased-version "v${{ steps.version.outputs.next_prerelease }}" --start-rev "${prev_release}" --file-name NEW_RELEASE.md || true
+          gh release create "v${{ steps.version.outputs.next_prerelease }}" --prerelease -F NEW_RELEASE.md ./dist/*.tar.gz ./dist/*.whl
+        fi
 
-    - name: Release ${{ steps.version.outputs.next_release }}
-      id: github_release
-      if: ${{ (steps.set_release.outcome == 'success') && (steps.commit.outcome == 'success') }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      shell: bash
-      run: |
-        prev_release="$(gh release list | grep -i latest | cut -f1)"
-        echo $prev_release
-        [[ "v${{ steps.version.outputs.next_release }}" == "${prev_release}" ]] && exit 0
-        git tag "v${{ steps.version.outputs.next_release }}" -m "v${{ steps.version.outputs.next_release }}"
-        git push --follow-tags
-        poetry build
-        echo "" > NEW_RELEASE.md
-        poetry run cz changelog --unreleased-version "v${{ steps.version.outputs.next_release }}" --start-rev "${prev_release}" --file-name NEW_RELEASE.md || true
-        gh release create "v${{ steps.version.outputs.next_release }}" -F NEW_RELEASE.md ./dist/*.tar.gz ./dist/*.whl
-
-    - name: Prerelease ${{ steps.version.outputs.next_prerelease }}
-      id: github_prerelease
-      if: ${{ (steps.set_prerelease.outcome == 'success') && (steps.commit.outcome == 'success') }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      shell: bash
-      run: |
-        prev_release="$(gh release list | grep -i latest | cut -f1)"
-        prev_prerelease="$(gh release list | grep -i pre-latest | cut -f1)"
-        echo "$prev_release $prev_prerelease"
-        [[ "v${{ steps.version.outputs.next_prerelease }}" == "${prev_release}" ]] && exit 0
-        [[ "v${{ steps.version.outputs.next_prerelease }}" == "${prev_prerelease}" ]] && exit 0
-        git tag "v${{ steps.version.outputs.next_prerelease }}" -m "v${{ steps.version.outputs.next_prerelease }}"
-        git push --follow-tags
-        poetry build
-        echo "" > NEW_RELEASE.md
-        poetry run cz changelog --unreleased-version "v${{ steps.version.outputs.next_prerelease }}" --start-rev "${prev_release}" --file-name NEW_RELEASE.md || true
-        gh release create "v${{ steps.version.outputs.next_prerelease }}" --prerelease -F NEW_RELEASE.md ./dist/*.tar.gz ./dist/*.whl
