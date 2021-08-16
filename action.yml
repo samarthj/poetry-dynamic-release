@@ -33,18 +33,12 @@ runs:
         poetry install --remove-untracked
         poetry config --list
 
-    - name: Format with isort
-      shell: bash
-      run: poe format-imports
-    - name: Format with black
-      shell: bash
-      run: poe format
-    - name: Test with pytest
-      shell: bash
-      run: poe test
-    - name: Lint with flake8
-      shell: bash
-      run: |
+        echo "------------------------------"
+        echo "------------------------------"
+        echo "Run format/test/lint"
+        poe format-imports
+        poe format
+        poe test
         # Show the plugins used for linting
         poe lint-plugins
         # exit-zero treats all errors as warnings.
@@ -53,16 +47,22 @@ runs:
     - name: Setup git config
       shell: bash
       run: |
-        git config --global user.name "${{ inputs.git-username }}"
-        git config --global user.email ${{ inputs.git-email }}
-        git config --global user.signkey ${{ inputs.git-gpg-email }}
-        git config --global commit.gpgsign true
-        git config --global init.defaultBranch main
+        echo "------------------------------"
+        echo "------------------------------"
+        echo "Setup git config"
+        git config user.name "${{ inputs.git-username }}"
+        git config user.email ${{ inputs.git-email }}
+        git config user.signkey ${{ inputs.git-gpg-email }}
+        git config commit.gpgsign true
+        git config init.defaultBranch main
         git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
 
     - name: Delete Prerelease
       shell: bash
       run: |
+        echo "------------------------------"
+        echo "------------------------------"
+        echo "Delete Prerelease"
         prerelease="$(gh release list | grep -i pre-release | cut -f1)"
         echo $prerelease
         if [[ -n "${prerelease}" ]]; then
@@ -80,6 +80,9 @@ runs:
       id: version
       shell: bash
       run: |
+        echo "------------------------------"
+        echo "------------------------------"
+        echo "Version Evaluation"
         prev_release="$(gh release list | grep -i latest | cut -f1)"
         poetry-dynamic-versioning
         echo "dynamic: $(poetry version -s) release: $prev_release"
@@ -107,6 +110,9 @@ runs:
       id: release
       shell: bash
       run: |
+        echo "------------------------------"
+        echo "------------------------------"
+        echo "Release Evaluation"
         release="no"
         prerelease="no"
         if [[ "${{ steps.version.outputs.version_stage }}" == "rc" ]] && [[ ${{ steps.version.outputs.version_revision }} -gt 3 ]]; then
