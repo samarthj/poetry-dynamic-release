@@ -24,17 +24,18 @@ runs:
   steps:
 
     - name: Update the dependencies using poetry
+      id: update
       shell: bash
       run: |
         [ ${{ inputs.poetry-update }} == true ] && poetry update
     - name: Install the project
+      id: install
       shell: bash
       run: |
         poetry install --remove-untracked
         poetry config --list
 
-        echo "------------------------------"
-        echo "------------------------------"
+        echo "=============================="
         echo "Run format/test/lint"
         poe format-imports
         poe format
@@ -43,12 +44,14 @@ runs:
         poe lint-plugins
         # exit-zero treats all errors as warnings.
         poe lint --count --exit-zero --statistics || true
+        
 
     - name: Setup git config
+      id: git
       shell: bash
       run: |
-        echo "------------------------------"
-        echo "------------------------------"
+        echo "::set-output name=diff::$(git diff FETCH_HEAD --stat)"
+        echo "=============================="
         echo "Setup git config"
         git config user.name "${{ inputs.git-username }}"
         git config user.email ${{ inputs.git-email }}
@@ -58,11 +61,15 @@ runs:
         git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
 
     - name: Delete Prerelease
+      id: delete
       shell: bash
       run: |
-        echo "------------------------------"
-        echo "------------------------------"
+        echo "=============================="
         echo "Delete Prerelease"
+        if [[ -z "${{ steps.git.outputs.diff }}" ]]; then
+          echo "Skipping... the content diff is the same"
+          exit 0
+        fi
         
         prerelease="$(gh release list | grep -i pre-release || true | cut -f1)"
         echo $prerelease
@@ -81,9 +88,12 @@ runs:
       id: version
       shell: bash
       run: |
-        echo "------------------------------"
-        echo "------------------------------"
+        echo "=============================="
         echo "Version Evaluation"
+        if [[ -z "${{ steps.git.outputs.diff }}" ]]; then
+          echo "Skipping... the content diff is the same"
+          exit 0
+        fi
         prev_release="$(gh release list | grep -i latest || true | cut -f1)"
         poetry-dynamic-versioning
         echo "dynamic: $(poetry version -s) release: $prev_release"
@@ -111,12 +121,14 @@ runs:
       id: release
       shell: bash
       run: |
-        echo "------------------------------"
-        echo "------------------------------"
+        echo "=============================="
         echo "Release Evaluation"
         release="no"
         prerelease="no"
-        if [[ "${{ steps.version.outputs.version_stage }}" == "rc" ]] && [[ ${{ steps.version.outputs.version_revision }} -gt 3 ]]; then
+        if [[ -z "${{ steps.git.outputs.diff }}" ]]; then
+          echo "Skipping... the content diff is the same"
+          exit 0
+        elif [[ "${{ steps.version.outputs.version_stage }}" == "rc" ]] && [[ ${{ steps.version.outputs.version_revision }} -gt 3 ]]; then
           release="yes"
         else 
           prerelease="yes"
