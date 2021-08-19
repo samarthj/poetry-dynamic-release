@@ -77,7 +77,7 @@ runs:
 
           if [[ -z "$(git diff "$prerelease" --stat)" ]]; then
             echo "Skipping delete... the content diff is the same"
-            echo "::set-output name=diff::empty"
+            echo "::set-output name=diff::$(git diff "$prerelease" --stat)"
             exit 0
           fi
 
