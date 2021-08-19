@@ -154,10 +154,10 @@ runs:
         fi
         
         echo "Commit ${{ steps.version.outputs.next_release }}"
+        poetry run cz changelog --unreleased-version "v$(poetry version -s)"
         git add .
         git status
         git commit -S -m "ci(github-actions): :construction_worker: v$(poetry version -s)"
-        poetry run cz changelog --unreleased-version "v$(poetry version -s)"
         
         
         if [[ "$release" == "yes" ]]; then
