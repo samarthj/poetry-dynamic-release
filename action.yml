@@ -37,6 +37,7 @@ runs:
 
         echo "=============================="
         echo "Run format/test/lint"
+        echo "++++++++++++++++++++++++++++++"
         poe format-imports
         poe format
         poe test
@@ -53,6 +54,7 @@ runs:
         echo "::set-output name=diff::$(git diff FETCH_HEAD --stat)"
         echo "=============================="
         echo "Setup git config"
+        echo "++++++++++++++++++++++++++++++"
         git config user.name "${{ inputs.git-username }}"
         git config user.email ${{ inputs.git-email }}
         git config user.signkey ${{ inputs.git-gpg-email }}
@@ -66,8 +68,9 @@ runs:
       run: |
         echo "=============================="
         echo "Delete Prerelease"
+        echo "++++++++++++++++++++++++++++++"
 
-        prerelease="$(gh release list | grep -i pre-release || true | cut -f1)"
+        prerelease="$((gh release list | grep -i pre-release || true) | cut -f1)"
         echo "Pre release: $prerelease"
         if [[ -n "${prerelease}" ]]; then
           echo "Current pre-release - $prerelease"
@@ -93,11 +96,12 @@ runs:
       run: |
         echo "=============================="
         echo "Version Evaluation"
+        echo "++++++++++++++++++++++++++++++"
         if [[ -z "${{ steps.git.outputs.diff }}" ]] && [[ -z "${{ steps.delete.outputs.diff }}" ]]; then
           echo "Skipping... the content diff is the same"
           exit 0
         fi
-        prev_release="$(gh release list | grep -i latest || true | cut -f1)"
+        prev_release="$((gh release list | grep -i latest || true) | cut -f1)"
         poetry-dynamic-versioning
         echo "dynamic: $(poetry version -s) release: $prev_release"
         version_base="$(poetry version -s | sed -re 's|^([0-9.]+)([abrc]*)([0-9]*)|\1|g')"
@@ -126,6 +130,7 @@ runs:
       run: |
         echo "=============================="
         echo "Release Evaluation"
+        echo "++++++++++++++++++++++++++++++"
         release="no"
         prerelease="no"
         if [[ -z "${{ steps.git.outputs.diff }}" ]] && [[ -z "${{ steps.delete.outputs.diff }}" ]]; then
@@ -154,7 +159,7 @@ runs:
         
         if [[ "$release" == "yes" ]]; then
           echo "Release ${{ steps.version.outputs.next_release }}"
-          prev_release="$(gh release list | grep -i latest || true | cut -f1)"
+          prev_release="$((gh release list | grep -i latest || true) | cut -f1)"
           echo $prev_release
           [[ "v${{ steps.version.outputs.next_release }}" == "${prev_release}" ]] && exit 0
           git tag "v${{ steps.version.outputs.next_release }}" -m "v${{ steps.version.outputs.next_release }}"
@@ -165,8 +170,8 @@ runs:
           gh release create "v${{ steps.version.outputs.next_release }}" -F NEW_RELEASE.md ./dist/*.tar.gz ./dist/*.whl
         elif [[ "$prerelease" == "yes" ]]; then
           echo "Prerelease ${{ steps.version.outputs.next_prerelease }}"
-          prev_release="$(gh release list | grep -i latest || true | cut -f1)"
-          prev_prerelease="$(gh release list | grep -i pre-release || true | cut -f1)"
+          prev_release="$((gh release list | grep -i latest || true) | cut -f1)"
+          prev_prerelease="$((gh release list | grep -i pre-release || true) | cut -f1)"
           echo "$prev_release $prev_prerelease"
           [[ "v${{ steps.version.outputs.next_prerelease }}" == "${prev_release}" ]] && exit 0
           [[ "v${{ steps.version.outputs.next_prerelease }}" == "${prev_prerelease}" ]] && exit 0
