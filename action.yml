@@ -76,7 +76,7 @@ runs:
           echo "Current pre-release - $prerelease"
 
           if [[ -z "$(git diff "$prerelease" --stat)" ]]; then
-            echo "Skipping delete... the content diff is the same"
+            echo "Skipping delete... the prev release content diff is the same"
             echo "::set-output name=diff::$(git diff "$prerelease" --stat)"
             exit 0
           fi
@@ -101,6 +101,7 @@ runs:
           echo "Skipping... the content diff is the same"
           exit 0
         fi
+
         prev_release="$((gh release list | grep -i latest || true) | cut -f1)"
         poetry-dynamic-versioning
         echo "dynamic: $(poetry version -s) release: $prev_release"
@@ -131,12 +132,14 @@ runs:
         echo "=============================="
         echo "Release Evaluation"
         echo "++++++++++++++++++++++++++++++"
-        release="no"
-        prerelease="no"
         if [[ -z "${{ steps.git.outputs.diff }}" ]] && [[ -z "${{ steps.delete.outputs.diff }}" ]]; then
           echo "Skipping... the content diff is the same"
           exit 0
-        elif [[ "${{ steps.version.outputs.version_stage }}" == "rc" ]] && [[ ${{ steps.version.outputs.version_revision }} -gt 3 ]]; then
+        fi
+
+        release="no"
+        prerelease="no"
+        if [[ "${{ steps.version.outputs.version_stage }}" == "rc" ]] && [[ ${{ steps.version.outputs.version_revision }} -gt 3 ]]; then
           release="yes"
         else 
           prerelease="yes"
