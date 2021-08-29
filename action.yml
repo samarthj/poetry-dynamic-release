@@ -1,5 +1,5 @@
 name: Poetry Dynamic Release
-  
+
 description: 'Do a dynamic semver release for poetry'
 inputs:
   poetry-update:
@@ -7,22 +7,24 @@ inputs:
     required: false
     default: false
   git-username:
+    description: 'Github username'
     required: true
   git-email:
+    description: 'Github email'
     required: true
   git-gpg-email:
+    description: 'Git gpg signing key email'
     required: true
 outputs:
   pre-release:
-    description: "Prerelease version"
+    description: 'Prerelease version'
     value: ${{ steps.version.outputs.next_prerelease }}
   release:
-    description: "Selease version"
+    description: 'Selease version'
     value: ${{ steps.version.outputs.next_release }}
 runs:
-  using: "composite"
+  using: 'composite'
   steps:
-
     - name: Update the dependencies using poetry
       id: update
       shell: bash
@@ -45,7 +47,6 @@ runs:
         poe lint-plugins
         # exit-zero treats all errors as warnings.
         poe lint --count --exit-zero --statistics || true
-        
 
     - name: Setup git config
       id: git
@@ -72,6 +73,7 @@ runs:
 
         prerelease="$((gh release list | grep -i pre-release || true) | cut -f1)"
         echo "Pre release: $prerelease"
+        echo "::set-output name=prerelease::$prerelease"
         if [[ -n "${prerelease}" ]]; then
           echo "Current pre-release - $prerelease"
 
@@ -97,12 +99,22 @@ runs:
         echo "=============================="
         echo "Version Evaluation"
         echo "++++++++++++++++++++++++++++++"
-        if [[ -z "${{ steps.git.outputs.diff }}" ]] && [[ -z "${{ steps.delete.outputs.diff }}" ]]; then
-          echo "Skipping... the content diff is the same"
+        prev_release="$((gh release list | grep -i latest || true) | cut -f1)"
+
+        if [[ -n "${{ steps.delete.outputs.prerelease }}" ]] && [[ -z "${{ steps.delete.outputs.diff }}" ]]; then
+          echo "Content diff is the same as Pre-release: ${{ steps.delete.outputs.prerelease }}"
+          echo "::set-output name=diff::${{ steps.delete.outputs.diff }}"
+          exit 0
+        elif [[ -n "$prev_release" ]] && [[ -z "$(git diff "$prev_release" --stat)" ]]; then
+          echo "Content diff is the same as Release: $prev_release"
+          echo "::set-output name=diff::$(git diff "$prev_release" --stat)"
+          exit 0
+        elif [[ -z "${{ steps.git.outputs.diff }}" ]]; then
+          echo "Content diff is the same as FETCH_HEAD"
+          echo "::set-output name=diff::${{ steps.git.outputs.diff }}"
           exit 0
         fi
 
-        prev_release="$((gh release list | grep -i latest || true) | cut -f1)"
         poetry-dynamic-versioning
         echo "dynamic: $(poetry version -s) release: $prev_release"
         version_base="$(poetry version -s | sed -re 's|^([0-9.]+)([abrc]*)([0-9]*)|\1|g')"
@@ -132,19 +144,20 @@ runs:
         echo "=============================="
         echo "Release Evaluation"
         echo "++++++++++++++++++++++++++++++"
-        if [[ -z "${{ steps.git.outputs.diff }}" ]] && [[ -z "${{ steps.delete.outputs.diff }}" ]]; then
-          echo "Skipping... the content diff is the same"
+
+        if [[ -z "${{ steps.version.outputs.next_base }}" ]]; then
+          echo "Skipping, no release version evaluated..."
           exit 0
         fi
 
         release="no"
         prerelease="no"
-        if [[ "${{ steps.version.outputs.version_stage }}" == "rc" ]] && [[ ${{ steps.version.outputs.version_revision }} -gt 3 ]]; then
+        if [[ "${{ steps.version.outputs.version_stage }}" == "rc" ]] && [[ ${{ steps.version.outputs.version_revision }} -ge 3 ]]; then
           release="yes"
-        else 
+        else
           prerelease="yes"
         fi
-        
+
         if [[ "$release" == "yes" ]]; then
           echo "Set Release Version ${{ steps.version.outputs.version_full }} -> ${{ steps.version.outputs.next_release }}"
           poetry version ${{ steps.version.outputs.next_release }}
@@ -152,14 +165,16 @@ runs:
           echo "Set Prerelease Version ${{ steps.version.outputs.version_full }} -> ${{ steps.version.outputs.next_prerelease }}"
           poetry version ${{ steps.version.outputs.next_prerelease }}
         fi
-        
-        echo "Commit ${{ steps.version.outputs.next_release }}"
-        poetry run cz changelog --unreleased-version "v$(poetry version -s)"
-        git add .
-        git status
-        git commit -S -m "ci(github-actions): :construction_worker: v$(poetry version -s)"
-        
-        
+
+        if [[ "$release" == "yes" ]] || [[ "$prerelease" == "yes" ]]; then
+          echo "Commit ${{ steps.version.outputs.next_release }}"
+          poetry run cz changelog --unreleased-version "v$(poetry version -s)"
+          git add .
+          git status
+          git commit -S -m "ci(github-actions): :construction_worker: v$(poetry version -s)"
+        fi
+
+
         if [[ "$release" == "yes" ]]; then
           echo "Release ${{ steps.version.outputs.next_release }}"
           prev_release="$((gh release list | grep -i latest || true) | cut -f1)"
@@ -185,4 +200,3 @@ runs:
           poetry run cz changelog --unreleased-version "v${{ steps.version.outputs.next_prerelease }}" --start-rev "${prev_release}" --file-name NEW_RELEASE.md || true
           gh release create "v${{ steps.version.outputs.next_prerelease }}" --prerelease -F NEW_RELEASE.md ./dist/*.tar.gz ./dist/*.whl
         fi
-
