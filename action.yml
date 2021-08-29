@@ -109,6 +109,10 @@ runs:
           echo "Content diff is the same as Release: $prev_release"
           echo "::set-output name=diff::$(git diff "$prev_release" --stat)"
           exit 0
+        elif [[ -z "${{ steps.delete.outputs.diff }}" ]] && [[ -z "$(git diff "$prev_release" --stat)" ]] && [[ -z "${{ steps.git.outputs.diff }}" ]]; then
+          echo "Content diff is the same as FETCH_HEAD"
+          echo "::set-output name=diff::${{ steps.git.outputs.diff }}"
+          exit 0
         fi
 
         poetry-dynamic-versioning
